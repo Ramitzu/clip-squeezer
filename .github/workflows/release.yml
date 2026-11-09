@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+# Makes "py -3" use the Python below, not the newest one on the runner.
+env:
+  PY_PYTHON3: "3.13"
+
 jobs:
   build:
     runs-on: windows-latest
