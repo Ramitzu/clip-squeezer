@@ -3,11 +3,15 @@
 Run from the repo root:  py -3 -m unittest discover -s tests
 """
 
+import io
+import json
 import sys
 import tempfile
 import threading
+import types
 import unittest
 import urllib.error
+import zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -130,6 +134,67 @@ class FfmpegDownload(unittest.TestCase):
         with mock.patch.object(cs.urllib.request, "urlopen", fake_urlopen):
             with self.assertRaises(urllib.error.HTTPError):
                 cs._open_ffmpeg_download()
+
+
+    def test_only_the_two_tools_are_installed(self):
+        payload = io.BytesIO()
+        with zipfile.ZipFile(payload, "w") as archive:
+            for name in ("build/bin/ffmpeg.exe", "build/bin/ffprobe.exe",
+                         "build/bin/ffplay.exe", "build/LICENSE.txt"):
+                archive.writestr(name, name)
+        payload.seek(0)
+        response = mock.MagicMock(headers={}, read=payload.read)
+        response.__enter__.return_value = response
+
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.object(cs, "_open_ffmpeg_download", lambda: response):
+            cs.download_ffmpeg(Path(folder))
+            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()),
+                             ["ffmpeg.exe", "ffprobe.exe"])
+
+
+class ProbeMedia(unittest.TestCase):
+    def test_rotated_clip_with_cover_art(self):
+        data = {
+            "format": {"duration": "12.5", "bit_rate": "8000000"},
+            "streams": [
+                {"index": 0, "codec_type": "video", "codec_name": "mjpeg",
+                 "width": 300, "height": 300, "disposition": {"attached_pic": 1}},
+                {"index": 1, "codec_type": "video", "codec_name": "h264",
+                 "width": 1920, "height": 1080, "avg_frame_rate": "30000/1001",
+                 "side_data_list": [{"rotation": -90}]},
+                {"index": 2, "codec_type": "audio", "codec_name": "aac", "channels": 6},
+            ],
+        }
+        process = mock.Mock(returncode=0)
+        process.communicate.return_value = (json.dumps(data), "")
+
+        with mock.patch.object(cs.subprocess, "Popen", return_value=process), \
+                mock.patch.object(cs, "ffprobe_bin", lambda: Path("ffprobe")):
+            info = cs.probe_media(Path("clip.mp4"))
+
+        self.assertEqual((info.width, info.height), (1080, 1920))
+        self.assertEqual((info.vstream_index, info.astream_index), (1, 2))
+        self.assertEqual(info.duration, 12.5)
+        self.assertAlmostEqual(info.fps, 29.97, places=2)
+
+
+class FinishMessage(unittest.TestCase):
+    def test_clip_from_an_earlier_run_does_not_hide_a_real_encode(self):
+        earlier = cs.Job(uid=1, src=Path("small.mp4"), state="fits")
+        squeezed = cs.Job(uid=2, src=Path("big.mp4"), state="done")
+        said = []
+        app = types.SimpleNamespace(
+            jobs=[earlier, squeezed], _run_uids={2}, running=True,
+            _update_action=lambda: None, _update_counts=lambda: None,
+            bar=mock.Mock(), detail=mock.Mock(),
+            _say=lambda text, color=None: said.append(text),
+        )
+
+        cs.App._finish(app, {"done": 1, "failed": 0, "saved": 50 * cs.MB,
+                             "total": 1, "canceled": False})
+
+        self.assertIn("1 clip ready", said[-1])
 
 
 class BatchRunnerStaleProbe(unittest.TestCase):

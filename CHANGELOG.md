@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 - 2026-11-09
+
+- Fixed the finish message saying "nothing to compress" after a real compress.
+- Clip lengths now appear as soon as the first-time ffmpeg download finishes.
+
 ## 1.0.0 - 2026-11-09
 
 First public release.

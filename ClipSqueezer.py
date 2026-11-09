@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 APP_NAME = "Clip Squeezer"
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 USER_AGENT = f"ClipSqueezer/{VERSION}"
 
 # Upload limits are quoted in decimal megabytes (10 MB = 10,000,000 bytes).
@@ -750,7 +750,6 @@ class Job:
     pct: float = 0.0
     note: str = ""
     probed: bool = False
-    oversize: bool = False
 
 
 @dataclass
@@ -1043,14 +1042,6 @@ class RoundedButton:
         self.canvas.pack(**kwargs)
         return self
 
-    def grid(self, **kwargs):
-        self.canvas.grid(**kwargs)
-        return self
-
-    def place(self, **kwargs):
-        self.canvas.place(**kwargs)
-        return self
-
     # -- state -------------------------------------------------------------
     def set_text(self, text: str) -> None:
         if text != self._text:
@@ -1141,10 +1132,6 @@ class ChipGroup:
         self.canvas.bind("<Leave>", self._on_leave)
         self.canvas.bind("<Button-1>", self._on_click)
         self._draw()
-
-    def pack(self, **kwargs):
-        self.canvas.pack(**kwargs)
-        return self
 
     def grid(self, **kwargs):
         self.canvas.grid(**kwargs)
@@ -1583,7 +1570,6 @@ class App:
 
         outer = tk.Frame(self.root, bg=BG)
         outer.pack(fill="both", expand=True, padx=S(26), pady=(S(20), S(16)))
-        self.outer = outer
 
         # ---- footer (packed first so it always stays visible) ------------
         footer = tk.Frame(outer, bg=BG)
@@ -1661,7 +1647,6 @@ class App:
         table = tk.Frame(outer, bg=SURFACE, highlightthickness=1,
                          highlightbackground=BORDER)
         table.pack(fill="both", expand=True)
-        self.table = table
 
         columns = ("size", "length", "result", "state")
         self.tree = ttk.Treeview(table, columns=columns, show="tree headings",
@@ -1694,7 +1679,6 @@ class App:
         self.tree.tag_configure("done", foreground=TEXT)
         self.tree.tag_configure("fits", foreground=TEXT_FAINT)
         self.tree.tag_configure("error", foreground="#F07C7E")
-        self.tree.tag_configure("oversize", foreground="#E0A626")
         self.tree.tag_configure("canceled", foreground=TEXT_FAINT)
 
         self.tree.bind("<Double-1>", self._open_selected)
@@ -2087,7 +2071,6 @@ class App:
                     job.state = "queued"
                     job.out = None
                     job.out_size = 0
-                    job.oversize = False
             if job.state in ("queued", "error", "canceled", "fits"):
                 self._refresh_row(job)
         self._update_action()
@@ -2165,7 +2148,6 @@ class App:
             job.note = ""
             job.out = None
             job.out_size = 0
-            job.oversize = False
             self._refresh_row(job)
 
         self.running = True
@@ -2221,7 +2203,6 @@ class App:
     def _start_prober(self) -> None:
         self._probe_queue: queue.Queue = queue.Queue()
         self._probe_stop = threading.Event()
-        self._probe_proc = None
         thread = threading.Thread(target=self._prober, daemon=True)
         self._probe_thread = thread
         thread.start()
@@ -2293,9 +2274,7 @@ class App:
                 self._say(text=f"{job.src.name}: {job.note}")
         elif kind == "status":
             self._say(text=event[1])
-        elif kind == "probed":
-            self._refresh_row(event[1])
-        elif kind == "probe_failed":
+        elif kind in ("probed", "probe_failed"):
             self._refresh_row(event[1])
         elif kind == "finished":
             self._finish(event[1])
@@ -2310,6 +2289,7 @@ class App:
                 self.bar.set(frac * 100)
         elif kind == "engine_done":
             self._downloading = False
+            self._requeue_probes()
             self.pill.set("engine ready", GREEN)
             self._say(text="ffmpeg installed. Ready to squeeze.")
             self.bar.set(0)
@@ -2329,7 +2309,7 @@ class App:
         self._update_action()
         total = summary.get("total") or 1
         self.bar.set(summary["done"] / total * 100.0)
-        fits = sum(1 for j in self.jobs if j.state == "fits")
+        fits = sum(1 for j in self.jobs if j.uid in self._run_uids and j.state == "fits")
         if summary["canceled"]:
             self._say(text="Canceled.", color=TEXT_DIM)
         elif summary["failed"] and not summary["done"]:
