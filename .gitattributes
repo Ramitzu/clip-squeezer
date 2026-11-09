@@ -1,0 +1,8 @@
+* text=auto
+
+# Windows scripts can misbehave with Unix line endings.
+*.bat text eol=crlf
+*.vbs text eol=crlf
+
+*.ico binary
+*.png binary

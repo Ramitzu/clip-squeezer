@@ -1,0 +1,41 @@
+CLIP SQUEEZER - quick start
+===========================
+
+1. Unzip this folder somewhere normal, like Desktop or Documents.
+
+2. Double-click "Clip Squeezer.exe".
+
+   If Windows shows "Windows protected your PC", click "More info" ->
+   "Run anyway". That warning appears for any small app that is not
+   code-signed. It is not a virus report.
+
+3. Click the big "Choose clips" button (or drag a clip onto the window).
+4. Pick a target size: "20 MB Free" is the normal Discord limit.
+5. Press "Squeeze N clips" (or Enter).
+
+When it says Done, press "Show in folder" - it opens the folder with the
+finished clip selected.
+
+Good to know
+------------
+- The first time you squeeze a clip, the app asks to download ffmpeg, the
+  engine that does the compressing. It's one time, about 200 MB, and after
+  that everything works offline.
+- Keep the whole folder together; the .exe needs the "_internal" folder.
+- Fast = quickest, Balanced = normal, Best quality = slowest, sharpest result.
+- You can choose several clips at once, or drop a whole folder of clips.
+- Very long clips may not reach a tiny target; the row will say "Over limit"
+  instead of pretending it worked.
+- Some antivirus tools flag packed Python apps by mistake. If yours does, you
+  can check the source code on GitHub, or build the app yourself from it.
+- Licences for this app and everything bundled with it are in the "licenses"
+  folder.
+
+Troubleshooting
+---------------
+"Can't write there"  -> pick another save folder (the Change button).
+"This file can't be read as a video" -> the file is corrupt or not a video.
+Nothing happens on double-click -> make sure the folder was fully unzipped,
+not just opened inside the zip preview, and keep "_internal" next to the .exe.
+
+That's it - enjoy your clips!

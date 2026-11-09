@@ -1,0 +1,28 @@
+# Run by hand from the Actions tab. Builds the Windows zip and creates a DRAFT
+# release, so nothing goes public until someone presses Publish.
+name: Build release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: py -3 -m pip install -r requirements.txt
+      - run: py -3 -m unittest discover -s tests
+      - run: cmd /c .\build_exe.bat
+      - name: Create draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = py -3 -c "import ClipSqueezer as c; print(c.VERSION)"
+          gh release create "v$version" "release/ClipSqueezer-v$version-Windows.zip" --draft --title "Clip Squeezer $version" --notes "See CHANGELOG.md"

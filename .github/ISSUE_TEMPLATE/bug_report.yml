@@ -1,0 +1,29 @@
+name: Bug report
+description: Something didn't work
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Include what the row or status line said.
+    validations:
+      required: true
+  - type: input
+    id: clip
+    attributes:
+      label: Clip details
+      description: Format, length, resolution and the target size you picked.
+  - type: input
+    id: version
+    attributes:
+      label: App version and Windows version
+      placeholder: Clip Squeezer 1.0.0, Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Crash log
+      description: If the app crashed, paste %LOCALAPPDATA%\ClipSqueezer\error.log here. Remove anything private first.
+      render: text

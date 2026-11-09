@@ -1,0 +1,2 @@
+# Optional: enables drag and drop. The app still works without it.
+tkinterdnd2>=0.7.0
